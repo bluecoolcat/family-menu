@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#FF6B6B">
+    <title>🍽️ 今天吃什么</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .dish-card { transition: all 0.2s; }
+        .dish-card:active { transform: scale(0.98); }
+        .selected { border-color: #FF6B6B !important; background: #FFF5F5 !important; }
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- 顶部导航 -->
+    <nav class="bg-gradient-to-r from-red-400 to-pink-400 text-white sticky top-0 z-50 shadow-lg">
+        <div class="flex items-center justify-between px-4 py-3">
+            <h1 class="text-lg font-bold">🍽️ 今天吃什么</h1>
+            <div class="flex gap-2">
+                <button onclick="showPage('menu')" class="px-3 py-1 rounded-full text-sm bg-white/20 hover:bg-white/30 transition">
+                    📋 菜单
+                </button>
+                <button onclick="showPage('dishes')" class="px-3 py-1 rounded-full text-sm bg-white/20 hover:bg-white/30 transition">
+                    🍳 点菜
+                </button>
+                <button onclick="showPage('shopping')" class="px-3 py-1 rounded-full text-sm bg-white/20 hover:bg-white/30 transition">
+                    🛒 清单
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 今日菜单页 -->
+    <div id="page-menu" class="page p-4">
+        <div class="bg-white rounded-2xl shadow-sm p-4 mb-4">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-bold text-gray-800">📋 今日菜单</h2>
+                <span id="menu-date" class="text-sm text-gray-500"></span>
+            </div>
+            <div id="today-menu" class="space-y-2">
+                <p class="text-gray-400 text-center py-8">还没有点菜，去点菜吧 👇</p>
+            </div>
+            <div class="mt-4 flex gap-2">
+                <button onclick="clearMenu()" class="flex-1 py-2 rounded-xl border border-red-300 text-red-500 text-sm hover:bg-red-50 transition">
+                    🗑️ 清空
+                </button>
+                <button onclick="showPage('dishes')" class="flex-1 py-2 rounded-xl bg-gradient-to-r from-red-400 to-pink-400 text-white text-sm font-medium hover:opacity-90 transition">
+                    ➕ 继续点菜
+                </button>
+            </div>
+        </div>
+
+        <!-- 历史记录 -->
+        <div class="bg-white rounded-2xl shadow-sm p-4">
+            <h3 class="text-sm font-bold text-gray-600 mb-3">🕐 最近7天</h3>
+            <div id="history-list" class="space-y-2 text-sm text-gray-500">
+                <p>暂无记录</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 点菜页 -->
+    <div id="page-dishes" class="page p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-sm p-4 mb-4">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-bold text-gray-800">🍳 菜品库</h2>
+                <button onclick="randomPick()" class="px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-sm hover:bg-yellow-200 transition">
+                    🎲 随便
+                </button>
+            </div>
+            
+            <!-- 分类标签 -->
+            <div class="flex gap-2 mb-3 overflow-x-auto pb-2">
+                <button onclick="filterCategory('all')" class="category-btn px-3 py-1 rounded-full bg-red-100 text-red-600 text-sm whitespace-nowrap active" data-cat="all">全部</button>
+                <button onclick="filterCategory('quick')" class="category-btn px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-sm whitespace-nowrap" data-cat="quick">⚡ 快手菜</button>
+                <button onclick="filterCategory('weekend')" class="category-btn px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-sm whitespace-nowrap" data-cat="weekend">🍲 周末菜</button>
+                <button onclick="filterCategory('soup')" class="category-btn px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-sm whitespace-nowrap" data-cat="soup">🥣 汤羹</button>
+                <button onclick="filterCategory('staple')" class="category-btn px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-sm whitespace-nowrap" data-cat="staple">🍚 主食</button>
+            </div>
+
+            <div id="dishes-grid" class="grid grid-cols-2 gap-3">
+                <!-- 菜品卡片由JS生成 -->
+            </div>
+        </div>
+
+        <!-- 已选预览 -->
+        <div id="selected-preview" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg hidden">
+            <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">已选 <span id="selected-count" class="font-bold text-red-500">0</span> 道</span>
+                <button onclick="confirmSelection()" class="px-6 py-2 rounded-full bg-gradient-to-r from-red-400 to-pink-400 text-white font-medium hover:opacity-90 transition">
+                    确认点菜 ✅
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 购物清单页 -->
+    <div id="page-shopping" class="page p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-sm p-4">
+            <h2 class="text-lg font-bold text-gray-800 mb-3">🛒 购物清单</h2>
+            <div id="shopping-list" class="space-y-2">
+                <p class="text-gray-400 text-center py-8">还没有点菜，无法生成清单</p>
+            </div>
+            <button onclick="copyShoppingList()" class="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-green-400 to-teal-400 text-white font-medium hover:opacity-90 transition">
+                📋 复制清单
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 预置菜品数据
+        const defaultDishes = [
+            { id: 1, name: '番茄炒蛋', emoji: '🍅', category: 'quick', time: '10分钟', ingredients: ['番茄2个', '鸡蛋3个', '葱花'] },
+            { id: 2, name: '红烧肉', emoji: '🥩', category: 'weekend', time: '60分钟', ingredients: ['五花肉500g', '冰糖', '生抽', '老抽'] },
+            { id: 3, name: '青椒肉丝', emoji: '🫑', category: 'quick', time: '15分钟', ingredients: ['青椒3个', '瘦肉200g', '蒜末'] },
+            { id: 4, name: '麻婆豆腐', emoji: '🍮', category: 'quick', time: '15分钟', ingredients: ['嫩豆腐1盒', '肉末100g', '豆瓣酱'] },
+            { id: 5, name: '红烧鲫鱼', emoji: '🐟', category: 'weekend', time: '25分钟', ingredients: ['鲫鱼1条', '葱姜蒜', '生抽老抽'] },
+            { id: 6, name: '糖醋排骨', emoji: '🍖', category: 'weekend', time: '45分钟', ingredients: ['排骨500g', '糖醋汁', '芝麻'] },
+            { id: 7, name: '炒花菜', emoji: '🥦', category: 'quick', time: '10分钟', ingredients: ['花菜1颗', '五花肉', '干辣椒'] },
+            { id: 8, name: '番茄鸡蛋汤', emoji: '🥣', category: 'soup', time: '10分钟', ingredients: ['番茄1个', '鸡蛋1个', '葱花'] },
+            { id: 9, name: '紫菜蛋花汤', emoji: '🍲', category: 'soup', time: '5分钟', ingredients: ['紫菜', '鸡蛋', '虾皮'] },
+            { id: 10, name: '蛋炒饭', emoji: '🍚', category: 'staple', time: '10分钟', ingredients: ['米饭2碗', '鸡蛋2个', '葱花'] },
+            { id: 11, name: '宫保鸡丁', emoji: '🍗', category: 'quick', time: '20分钟', ingredients: ['鸡胸肉300g', '花生米', '干辣椒'] },
+            { id: 12, name: '可乐鸡翅', emoji: '🍖', category: 'weekend', time: '30分钟', ingredients: ['鸡翅10个', '可乐1罐', '生抽'] },
+            { id: 13, name: '酸辣土豆丝', emoji: '🥔', category: 'quick', time: '10分钟', ingredients: ['土豆2个', '干辣椒', '醋'] },
+            { id: 14, name: '玉米排骨汤', emoji: '🌽', category: 'soup', time: '60分钟', ingredients: ['排骨300g', '玉米1根', '胡萝卜'] },
+            { id: 15, name: '豆芽炒牛肉', emoji: '🥩', category: 'quick', time: '15分钟', ingredients: ['牛肉200g', '绿豆芽', '青椒'] },
+            { id: 16, name: '雪菜炒笋', emoji: '🎋', category: 'quick', time: '15分钟', ingredients: ['雪菜', '春笋', '肉丝'] },
+            { id: 17, name: '地三鲜', emoji: '🍆', category: 'quick', time: '20分钟', ingredients: ['茄子', '土豆', '青椒'] },
+            { id: 18, name: '腌笃鲜', emoji: '🍲', category: 'soup', time: '90分钟', ingredients: ['咸肉', '鲜肉', '春笋', '百叶结'] },
+            { id: 19, name: '红烧鱼块', emoji: '🐟', category: 'weekend', time: '30分钟', ingredients: ['草鱼块', '葱姜蒜', '豆瓣酱'] },
+            { id: 20, name: '水煮虾', emoji: '🦐', category: 'quick', time: '10分钟', ingredients: ['基围虾', '姜片', '料酒'] }
+        ];
+
+        // 状态管理
+        let dishes = JSON.parse(localStorage.getItem('dishes')) || defaultDishes;
+        let todayMenu = JSON.parse(localStorage.getItem('todayMenu')) || [];
+        let selectedDishes = new Set();
+        let currentCategory = 'all';
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('menu-date').textContent = new Date().toLocaleDateString('zh-CN');
+            renderDishes();
+            renderTodayMenu();
+            renderHistory();
+            renderShoppingList();
+        });
+
+        // 页面切换
+        function showPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+            document.getElementById(`page-${page}`).classList.remove('hidden');
+            if (page === 'menu') renderTodayMenu();
+            if (page === 'shopping') renderShoppingList();
+        }
+
+        // 渲染菜品
+        function renderDishes() {
+            const grid = document.getElementById('dishes-grid');
+            const filtered = currentCategory === 'all' 
+                ? dishes 
+                : dishes.filter(d => d.category === currentCategory);
+            
+            grid.innerHTML = filtered.map(dish => `
+                <div class="dish-card border-2 border-gray-100 rounded-xl p-3 cursor-pointer ${selectedDishes.has(dish.id) ? 'selected' : 'bg-white'}" 
+                     onclick="toggleDish(${dish.id})">
+                    <div class="text-3xl mb-2">${dish.emoji}</div>
+                    <div class="font-bold text-gray-800 text-sm">${dish.name}</div>
+                    <div class="text-xs text-gray-500 mt-1">⏱️ ${dish.time}</div>
+                    ${selectedDishes.has(dish.id) ? '<div class="text-red-500 text-xs mt-1">✓ 已选</div>' : ''}
+                </div>
+            `).join('');
+        }
+
+        // 切换选中
+        function toggleDish(id) {
+            if (selectedDishes.has(id)) {
+                selectedDishes.delete(id);
+            } else {
+                selectedDishes.add(id);
+            }
+            renderDishes();
+            updateSelectedPreview();
+        }
+
+        // 更新已选预览
+        function updateSelectedPreview() {
+            const preview = document.getElementById('selected-preview');
+            const count = document.getElementById('selected-count');
+            
+            if (selectedDishes.size > 0) {
+                preview.classList.remove('hidden');
+                count.textContent = selectedDishes.size;
+            } else {
+                preview.classList.add('hidden');
+            }
+        }
+
+        // 确认点菜
+        function confirmSelection() {
+            const selected = dishes.filter(d => selectedDishes.has(d.id));
+            todayMenu = [...todayMenu, ...selected];
+            
+            // 保存到历史
+            const history = JSON.parse(localStorage.getItem('history')) || [];
+            history.unshift({
+                date: new Date().toISOString().split('T')[0],
+                dishes: selected.map(d => d.name)
+            });
+            localStorage.setItem('history', JSON.stringify(history.slice(0, 7)));
+            
+            // 保存今日菜单
+            localStorage.setItem('todayMenu', JSON.stringify(todayMenu));
+            
+            // 清空选择
+            selectedDishes.clear();
+            updateSelectedPreview();
+            
+            // 跳转菜单页
+            showPage('menu');
+        }
+
+        // 渲染今日菜单
+        function renderTodayMenu() {
+            const container = document.getElementById('today-menu');
+            if (todayMenu.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-8">还没有点菜，去点菜吧 👇</p>';
+                return;
+            }
+            
+            container.innerHTML = todayMenu.map((dish, index) => `
+                <div class="flex items-center justify-between bg-gray-50 rounded-xl p-3 fade-in">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">${dish.emoji}</span>
+                        <div>
+                            <div class="font-medium text-gray-800">${dish.name}</div>
+                            <div class="text-xs text-gray-500">⏱️ ${dish.time}</div>
+                        </div>
+                    </div>
+                    <button onclick="removeDish(${index})" class="text-gray-400 hover:text-red-500 px-2">✕</button>
+                </div>
+            `).join('');
+        }
+
+        // 移除菜品
+        function removeDish(index) {
+            todayMenu.splice(index, 1);
+            localStorage.setItem('todayMenu', JSON.stringify(todayMenu));
+            renderTodayMenu();
+            renderShoppingList();
+        }
+
+        // 清空菜单
+        function clearMenu() {
+            if (todayMenu.length === 0) return;
+            if (confirm('确定清空今日菜单吗？')) {
+                todayMenu = [];
+                localStorage.setItem('todayMenu', JSON.stringify(todayMenu));
+                renderTodayMenu();
+                renderShoppingList();
+            }
+        }
+
+        // 渲染历史
+        function renderHistory() {
+            const history = JSON.parse(localStorage.getItem('history')) || [];
+            const container = document.getElementById('history-list');
+            
+            if (history.length === 0) {
+                container.innerHTML = '<p>暂无记录</p>';
+                return;
+            }
+            
+            container.innerHTML = history.map(h => `
+                <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                    <span class="text-gray-400">${h.date}</span>
+                    <span class="text-gray-600 truncate max-w-[200px]">${h.dishes.join('、')}</span>
+                </div>
+            `).join('');
+        }
+
+        // 渲染购物清单
+        function renderShoppingList() {
+            const container = document.getElementById('shopping-list');
+            if (todayMenu.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-8">还没有点菜，无法生成清单</p>';
+                return;
+            }
+            
+            // 合并所有食材
+            const allIngredients = todayMenu.flatMap(d => d.ingredients);
+            const uniqueIngredients = [...new Set(allIngredients)];
+            
+            container.innerHTML = uniqueIngredients.map((item, index) => `
+                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                    <input type="checkbox" id="item-${index}" class="w-5 h-5 rounded border-gray-300 text-red-500 focus:ring-red-500">
+                    <label for="item-${index}" class="flex-1 text-gray-800">${item}</label>
+                </div>
+            `).join('');
+        }
+
+        // 复制清单
+        function copyShoppingList() {
+            if (todayMenu.length === 0) return;
+            const allIngredients = todayMenu.flatMap(d => d.ingredients);
+            const text = `今日菜单：${todayMenu.map(d => d.name).join('、')}\n\n购物清单：\n${allIngredients.join('\n')}`;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                alert('清单已复制到剪贴板！');
+            });
+        }
+
+        // 分类筛选
+        function filterCategory(cat) {
+            currentCategory = cat;
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                if (btn.dataset.cat === cat) {
+                    btn.classList.add('bg-red-100', 'text-red-600');
+                    btn.classList.remove('bg-gray-100', 'text-gray-600');
+                } else {
+                    btn.classList.remove('bg-red-100', 'text-red-600');
+                    btn.classList.add('bg-gray-100', 'text-gray-600');
+                }
+            });
+            renderDishes();
+        }
+
+        // 随机推荐
+        function randomPick() {
+            const filtered = currentCategory === 'all' 
+                ? dishes 
+                : dishes.filter(d => d.category === currentCategory);
+            const random = filtered[Math.floor(Math.random() * filtered.length)];
+            
+            if (!selectedDishes.has(random.id)) {
+                selectedDishes.add(random.id);
+                renderDishes();
+                updateSelectedPreview();
+            }
+            
+            alert(`🎲 随机推荐：${random.emoji} ${random.name}`);
+        }
+
+        // PWA 支持
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "今天吃什么",
+  "short_name": "点菜",
+  "description": "家庭点菜系统，解决每天吃什么的难题",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FF6B6B",
+  "theme_color": "#FF6B6B",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
