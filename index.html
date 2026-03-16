@@ -215,7 +215,7 @@
         }
 
         async function pullSharedState() {
-            const response = await fetch(SYNC_ENDPOINT, { cache: 'no-store' });
+            const response = await fetch(`${SYNC_ENDPOINT}?t=${Date.now()}`, { cache: 'no-store' });
             if (!response.ok) throw new Error('sync unavailable');
             const data = await response.json();
             return data.state || null;
