@@ -4,6 +4,11 @@
 echo "🍽️ 部署家庭点菜系统到 Cloudflare Pages"
 echo ""
 
+BRANCH_NAME=$(git branch --show-current 2>/dev/null)
+if [ -z "$BRANCH_NAME" ]; then
+    BRANCH_NAME="main"
+fi
+
 # 检查是否已登录
 if ! npx wrangler whoami &>/dev/null; then
     echo "🔐 首次使用需要登录 Cloudflare..."
@@ -11,7 +16,7 @@ if ! npx wrangler whoami &>/dev/null; then
 fi
 
 echo "📦 开始部署..."
-npx wrangler pages deploy . --project-name="family-menu" --branch="main"
+npx wrangler pages deploy . --project-name="family-menu" --branch="$BRANCH_NAME"
 
 echo ""
 echo "✅ 部署完成！"

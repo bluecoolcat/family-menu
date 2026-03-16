@@ -26,8 +26,14 @@ fi
 # 登录 Cloudflare（如果需要）
 # wrangler login
 
+# 检测当前分支
+BRANCH_NAME=$(git branch --show-current 2>/dev/null)
+if [ -z "$BRANCH_NAME" ]; then
+  BRANCH_NAME="main"
+fi
+
 # 部署
 echo "部署到 Cloudflare Pages..."
-wrangler pages deploy . --project-name="family-menu" --branch="main"
+wrangler pages deploy . --project-name="family-menu" --branch="$BRANCH_NAME"
 
 echo "部署完成！"
