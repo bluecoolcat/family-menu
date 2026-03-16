@@ -150,9 +150,11 @@
         let menuHistory = readJSON(STORAGE_KEYS.history, []);
         let selectedDishes = new Set();
         let currentCategory = 'all';
+        let currentPage = 'menu';
         let nextId = Math.max(...dishes.map(d => d.id), 0) + 1;
         let syncInitialized = false;
         let syncInFlight = false;
+        let lastSharedStateHash = '';
 
         function readJSON(key, fallback) {
             try {
@@ -169,19 +171,34 @@
             localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(menuHistory));
         }
 
+        function getComparableState() {
+            return {
+                dishes,
+                todayMenu,
+                history: menuHistory
+            };
+        }
+
+        function getStateHash(state = getComparableState()) {
+            return JSON.stringify({
+                dishes: Array.isArray(state.dishes) ? state.dishes : [],
+                todayMenu: Array.isArray(state.todayMenu) ? state.todayMenu : [],
+                history: Array.isArray(state.history) ? state.history : []
+            });
+        }
+
         function applySharedState(state) {
             dishes = Array.isArray(state.dishes) && state.dishes.length > 0 ? state.dishes : defaultDishes;
             todayMenu = Array.isArray(state.todayMenu) ? state.todayMenu : [];
             menuHistory = Array.isArray(state.history) ? state.history : [];
             nextId = Math.max(...dishes.map(d => d.id), 0) + 1;
+            lastSharedStateHash = getStateHash();
             saveLocalState();
         }
 
         function getSharedState() {
             return {
-                dishes,
-                todayMenu,
-                history: menuHistory,
+                ...getComparableState(),
                 updatedAt: Date.now()
             };
         }
@@ -201,6 +218,7 @@
             if (syncInFlight) return;
             syncInFlight = true;
             try {
+                lastSharedStateHash = getStateHash();
                 await fetch(SYNC_ENDPOINT, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -217,6 +235,9 @@
             try {
                 const remoteState = await pullSharedState();
                 if (remoteState) {
+                    if (getStateHash(remoteState) === lastSharedStateHash) {
+                        return false;
+                    }
                     applySharedState(remoteState);
                     return true;
                 }
@@ -235,6 +256,7 @@
 
         async function persistState() {
             saveLocalState();
+            lastSharedStateHash = getStateHash();
             await pushSharedState();
         }
 
@@ -247,28 +269,53 @@
             updateSelectedPreview();
         }
 
+        function renderCurrentPage() {
+            if (currentPage === 'menu') {
+                renderTodayMenu();
+                renderHistory();
+                return;
+            }
+
+            if (currentPage === 'dishes') {
+                renderDishes();
+                updateSelectedPreview();
+                return;
+            }
+
+            if (currentPage === 'shopping') {
+                renderShoppingList();
+                return;
+            }
+
+            if (currentPage === 'manage') {
+                renderManageList();
+            }
+        }
+
         function startSyncPolling() {
             setInterval(async () => {
                 const changed = await syncStateFromCloud();
-                if (changed) renderAll();
+                if (changed) renderCurrentPage();
             }, 15000);
 
             document.addEventListener('visibilitychange', async () => {
                 if (document.hidden) return;
                 const changed = await syncStateFromCloud();
-                if (changed) renderAll();
+                if (changed) renderCurrentPage();
             });
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('menu-date').textContent = new Date().toLocaleDateString('zh-CN');
+            lastSharedStateHash = getStateHash();
             renderAll();
             const changed = await syncStateFromCloud();
-            if (changed) renderAll();
+            if (changed) renderCurrentPage();
             startSyncPolling();
         });
 
         function showPage(page) {
+            currentPage = page;
             document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
             document.getElementById(`page-${page}`).classList.remove('hidden');
             if (page === 'menu') renderTodayMenu();
