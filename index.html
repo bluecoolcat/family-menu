@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#FF6B6B">
     <title>🍽️ 今天吃什么</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         * { -webkit-tap-highlight-color: transparent; }
@@ -295,6 +295,10 @@
 
         function randomPick() {
             const filtered = currentCategory === 'all' ? dishes : dishes.filter(d => d.category === currentCategory);
+            if (filtered.length === 0) {
+                alert('当前分类没有可选菜品');
+                return;
+            }
             const random = filtered[Math.floor(Math.random() * filtered.length)];
             if (!selectedDishes.has(random.id)) {
                 selectedDishes.add(random.id);
