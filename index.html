@@ -144,6 +144,7 @@
             history: 'history'
         };
         const SYNC_ENDPOINT = '/api/menu-state';
+        const SYNC_POLL_INTERVAL_MS = 5000;
 
         let dishes = readJSON(STORAGE_KEYS.dishes, defaultDishes);
         let todayMenu = readJSON(STORAGE_KEYS.todayMenu, []);
@@ -305,17 +306,21 @@
             }
         }
 
+        async function syncAndRenderCurrentPage() {
+            const changed = await syncStateFromCloud();
+            if (changed) renderCurrentPage();
+        }
+
         function startSyncPolling() {
-            setInterval(async () => {
-                const changed = await syncStateFromCloud();
-                if (changed) renderCurrentPage();
-            }, 15000);
+            setInterval(syncAndRenderCurrentPage, SYNC_POLL_INTERVAL_MS);
 
             document.addEventListener('visibilitychange', async () => {
                 if (document.hidden) return;
-                const changed = await syncStateFromCloud();
-                if (changed) renderCurrentPage();
+                await syncAndRenderCurrentPage();
             });
+
+            window.addEventListener('focus', syncAndRenderCurrentPage);
+            window.addEventListener('pageshow', syncAndRenderCurrentPage);
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -334,6 +339,7 @@
             if (page === 'menu') renderTodayMenu();
             if (page === 'shopping') renderShoppingList();
             if (page === 'manage') renderManageList();
+            syncAndRenderCurrentPage();
         }
 
         function renderDishes() {
