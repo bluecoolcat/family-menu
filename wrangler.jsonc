@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "family-menu",
+  "main": "worker.js",
+  "compatibility_date": "2026-03-16",
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "FAMILY_MENU_STATE",
+      "id": "0b6b44bc09224a88b65bee6612c2b4e2"
+    }
+  ]
+}
