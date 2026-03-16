@@ -138,19 +138,134 @@
             { id: 20, name: '水煮虾', emoji: '🦐', category: 'quick', time: '10分钟', ingredients: ['基围虾', '姜片', '料酒'] }
         ];
 
-        let dishes = JSON.parse(localStorage.getItem('dishes')) || defaultDishes;
-        let todayMenu = JSON.parse(localStorage.getItem('todayMenu')) || [];
+        const STORAGE_KEYS = {
+            dishes: 'dishes',
+            todayMenu: 'todayMenu',
+            history: 'history'
+        };
+        const SYNC_ENDPOINT = '/api/menu-state';
+
+        let dishes = readJSON(STORAGE_KEYS.dishes, defaultDishes);
+        let todayMenu = readJSON(STORAGE_KEYS.todayMenu, []);
+        let menuHistory = readJSON(STORAGE_KEYS.history, []);
         let selectedDishes = new Set();
         let currentCategory = 'all';
         let nextId = Math.max(...dishes.map(d => d.id), 0) + 1;
+        let syncInitialized = false;
+        let syncInFlight = false;
 
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('menu-date').textContent = new Date().toLocaleDateString('zh-CN');
+        function readJSON(key, fallback) {
+            try {
+                const raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : fallback;
+            } catch {
+                return fallback;
+            }
+        }
+
+        function saveLocalState() {
+            localStorage.setItem(STORAGE_KEYS.dishes, JSON.stringify(dishes));
+            localStorage.setItem(STORAGE_KEYS.todayMenu, JSON.stringify(todayMenu));
+            localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(menuHistory));
+        }
+
+        function applySharedState(state) {
+            dishes = Array.isArray(state.dishes) && state.dishes.length > 0 ? state.dishes : defaultDishes;
+            todayMenu = Array.isArray(state.todayMenu) ? state.todayMenu : [];
+            menuHistory = Array.isArray(state.history) ? state.history : [];
+            nextId = Math.max(...dishes.map(d => d.id), 0) + 1;
+            saveLocalState();
+        }
+
+        function getSharedState() {
+            return {
+                dishes,
+                todayMenu,
+                history: menuHistory,
+                updatedAt: Date.now()
+            };
+        }
+
+        function hasLocalChangesToShare() {
+            return todayMenu.length > 0 || menuHistory.length > 0 || JSON.stringify(dishes) !== JSON.stringify(defaultDishes);
+        }
+
+        async function pullSharedState() {
+            const response = await fetch(SYNC_ENDPOINT, { cache: 'no-store' });
+            if (!response.ok) throw new Error('sync unavailable');
+            const data = await response.json();
+            return data.state || null;
+        }
+
+        async function pushSharedState() {
+            if (syncInFlight) return;
+            syncInFlight = true;
+            try {
+                await fetch(SYNC_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(getSharedState())
+                });
+            } catch {
+                // Keep local state if cloud sync is not configured yet.
+            } finally {
+                syncInFlight = false;
+            }
+        }
+
+        async function syncStateFromCloud() {
+            try {
+                const remoteState = await pullSharedState();
+                if (remoteState) {
+                    applySharedState(remoteState);
+                    return true;
+                }
+                if (!syncInitialized && hasLocalChangesToShare()) {
+                    await pushSharedState();
+                }
+            } catch {
+                if (!syncInitialized && hasLocalChangesToShare()) {
+                    await pushSharedState();
+                }
+            } finally {
+                syncInitialized = true;
+            }
+            return false;
+        }
+
+        async function persistState() {
+            saveLocalState();
+            await pushSharedState();
+        }
+
+        function renderAll() {
             renderDishes();
             renderTodayMenu();
             renderHistory();
             renderShoppingList();
             renderManageList();
+            updateSelectedPreview();
+        }
+
+        function startSyncPolling() {
+            setInterval(async () => {
+                const changed = await syncStateFromCloud();
+                if (changed) renderAll();
+            }, 15000);
+
+            document.addEventListener('visibilitychange', async () => {
+                if (document.hidden) return;
+                const changed = await syncStateFromCloud();
+                if (changed) renderAll();
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('menu-date').textContent = new Date().toLocaleDateString('zh-CN');
+            renderAll();
+            const changed = await syncStateFromCloud();
+            if (changed) renderAll();
+            startSyncPolling();
         });
 
         function showPage(page) {
@@ -192,13 +307,12 @@
             }
         }
 
-        function confirmSelection() {
+        async function confirmSelection() {
             const selected = dishes.filter(d => selectedDishes.has(d.id));
             todayMenu = [...todayMenu, ...selected];
-            const history = JSON.parse(localStorage.getItem('history')) || [];
-            history.unshift({ date: new Date().toISOString().split('T')[0], dishes: selected.map(d => d.name) });
-            localStorage.setItem('history', JSON.stringify(history.slice(0, 7)));
-            localStorage.setItem('todayMenu', JSON.stringify(todayMenu));
+            menuHistory.unshift({ date: new Date().toISOString().split('T')[0], dishes: selected.map(d => d.name) });
+            menuHistory = menuHistory.slice(0, 7);
+            await persistState();
             selectedDishes.clear();
             updateSelectedPreview();
             showPage('menu');
@@ -224,31 +338,30 @@
             `).join('');
         }
 
-        function removeDish(index) {
+        async function removeDish(index) {
             todayMenu.splice(index, 1);
-            localStorage.setItem('todayMenu', JSON.stringify(todayMenu));
+            await persistState();
             renderTodayMenu();
             renderShoppingList();
         }
 
-        function clearMenu() {
+        async function clearMenu() {
             if (todayMenu.length === 0) return;
             if (confirm('确定清空今日菜单吗？')) {
                 todayMenu = [];
-                localStorage.setItem('todayMenu', JSON.stringify(todayMenu));
+                await persistState();
                 renderTodayMenu();
                 renderShoppingList();
             }
         }
 
         function renderHistory() {
-            const history = JSON.parse(localStorage.getItem('history')) || [];
             const container = document.getElementById('history-list');
-            if (history.length === 0) {
+            if (menuHistory.length === 0) {
                 container.innerHTML = '<p>暂无记录</p>';
                 return;
             }
-            container.innerHTML = history.map(h => `
+            container.innerHTML = menuHistory.map(h => `
                 <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                     <span class="text-gray-400">${h.date}</span>
                     <span class="text-gray-600 truncate max-w-[200px]">${h.dishes.join('、')}</span>
@@ -373,7 +486,7 @@
             `);
         }
 
-        function saveDish() {
+        async function saveDish() {
             const id = document.getElementById('edit-id').value;
             const name = document.getElementById('input-name').value.trim();
             const emoji = document.getElementById('input-emoji').value.trim() || '🍽️';
@@ -390,16 +503,17 @@
                 dishes.push({ id: nextId++, name, emoji, category, time, ingredients });
             }
 
-            localStorage.setItem('dishes', JSON.stringify(dishes));
+            await persistState();
             closeModal();
             renderDishes();
             renderManageList();
         }
 
-        function deleteDish(id) {
+        async function deleteDish(id) {
             if (!confirm('确定删除这道菜吗？')) return;
             dishes = dishes.filter(d => d.id !== id);
-            localStorage.setItem('dishes', JSON.stringify(dishes));
+            selectedDishes.delete(id);
+            await persistState();
             renderDishes();
             renderManageList();
         }
@@ -416,7 +530,7 @@
             `);
         }
 
-        function addCustomDish() {
+        async function addCustomDish() {
             const name = document.getElementById('custom-name').value.trim();
             const emoji = document.getElementById('custom-emoji').value.trim() || '🍽️';
             const time = document.getElementById('custom-time').value.trim() || '15分钟';
@@ -434,7 +548,7 @@
                 ingredients: ingredients.length > 0 ? ingredients : ['食材待定']
             });
 
-            localStorage.setItem('todayMenu', JSON.stringify(todayMenu));
+            await persistState();
             closeModal();
             showPage('menu');
         }
