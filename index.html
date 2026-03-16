@@ -16,6 +16,8 @@
         .selected { border-color: #FF6B6B !important; background: #FFF5F5 !important; }
         .fade-in { animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .modal { animation: modalIn 0.2s ease; }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -24,15 +26,10 @@
         <div class="flex items-center justify-between px-4 py-3">
             <h1 class="text-lg font-bold">🍽️ 今天吃什么</h1>
             <div class="flex gap-2">
-                <button onclick="showPage('menu')" class="px-3 py-1 rounded-full text-sm bg-white/20 hover:bg-white/30 transition">
-                    📋 菜单
-                </button>
-                <button onclick="showPage('dishes')" class="px-3 py-1 rounded-full text-sm bg-white/20 hover:bg-white/30 transition">
-                    🍳 点菜
-                </button>
-                <button onclick="showPage('shopping')" class="px-3 py-1 rounded-full text-sm bg-white/20 hover:bg-white/30 transition">
-                    🛒 清单
-                </button>
+                <button onclick="showPage('menu')" class="px-3 py-1 rounded-full text-sm bg-white/20 hover:bg-white/30 transition">📋 菜单</button>
+                <button onclick="showPage('dishes')" class="px-3 py-1 rounded-full text-sm bg-white/20 hover:bg-white/30 transition">🍳 点菜</button>
+                <button onclick="showPage('manage')" class="px-3 py-1 rounded-full text-sm bg-white/20 hover:bg-white/30 transition">⚙️ 管理</button>
+                <button onclick="showPage('shopping')" class="px-3 py-1 rounded-full text-sm bg-white/20 hover:bg-white/30 transition">🛒 清单</button>
             </div>
         </div>
     </nav>
@@ -48,21 +45,13 @@
                 <p class="text-gray-400 text-center py-8">还没有点菜，去点菜吧 👇</p>
             </div>
             <div class="mt-4 flex gap-2">
-                <button onclick="clearMenu()" class="flex-1 py-2 rounded-xl border border-red-300 text-red-500 text-sm hover:bg-red-50 transition">
-                    🗑️ 清空
-                </button>
-                <button onclick="showPage('dishes')" class="flex-1 py-2 rounded-xl bg-gradient-to-r from-red-400 to-pink-400 text-white text-sm font-medium hover:opacity-90 transition">
-                    ➕ 继续点菜
-                </button>
+                <button onclick="clearMenu()" class="flex-1 py-2 rounded-xl border border-red-300 text-red-500 text-sm hover:bg-red-50 transition">🗑️ 清空</button>
+                <button onclick="showPage('dishes')" class="flex-1 py-2 rounded-xl bg-gradient-to-r from-red-400 to-pink-400 text-white text-sm font-medium hover:opacity-90 transition">➕ 继续点菜</button>
             </div>
         </div>
-
-        <!-- 历史记录 -->
         <div class="bg-white rounded-2xl shadow-sm p-4">
             <h3 class="text-sm font-bold text-gray-600 mb-3">🕐 最近7天</h3>
-            <div id="history-list" class="space-y-2 text-sm text-gray-500">
-                <p>暂无记录</p>
-            </div>
+            <div id="history-list" class="space-y-2 text-sm text-gray-500"><p>暂无记录</p></div>
         </div>
     </div>
 
@@ -71,12 +60,11 @@
         <div class="bg-white rounded-2xl shadow-sm p-4 mb-4">
             <div class="flex items-center justify-between mb-3">
                 <h2 class="text-lg font-bold text-gray-800">🍳 菜品库</h2>
-                <button onclick="randomPick()" class="px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-sm hover:bg-yellow-200 transition">
-                    🎲 随便
-                </button>
+                <div class="flex gap-2">
+                    <button onclick="showCustomDishModal()" class="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm hover:bg-blue-200 transition">✏️ 自选菜</button>
+                    <button onclick="randomPick()" class="px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-sm hover:bg-yellow-200 transition">🎲 随便</button>
+                </div>
             </div>
-            
-            <!-- 分类标签 -->
             <div class="flex gap-2 mb-3 overflow-x-auto pb-2">
                 <button onclick="filterCategory('all')" class="category-btn px-3 py-1 rounded-full bg-red-100 text-red-600 text-sm whitespace-nowrap active" data-cat="all">全部</button>
                 <button onclick="filterCategory('quick')" class="category-btn px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-sm whitespace-nowrap" data-cat="quick">⚡ 快手菜</button>
@@ -84,20 +72,24 @@
                 <button onclick="filterCategory('soup')" class="category-btn px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-sm whitespace-nowrap" data-cat="soup">🥣 汤羹</button>
                 <button onclick="filterCategory('staple')" class="category-btn px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-sm whitespace-nowrap" data-cat="staple">🍚 主食</button>
             </div>
-
-            <div id="dishes-grid" class="grid grid-cols-2 gap-3">
-                <!-- 菜品卡片由JS生成 -->
-            </div>
+            <div id="dishes-grid" class="grid grid-cols-2 gap-3"></div>
         </div>
-
-        <!-- 已选预览 -->
         <div id="selected-preview" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg hidden">
             <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">已选 <span id="selected-count" class="font-bold text-red-500">0</span> 道</span>
-                <button onclick="confirmSelection()" class="px-6 py-2 rounded-full bg-gradient-to-r from-red-400 to-pink-400 text-white font-medium hover:opacity-90 transition">
-                    确认点菜 ✅
-                </button>
+                <button onclick="confirmSelection()" class="px-6 py-2 rounded-full bg-gradient-to-r from-red-400 to-pink-400 text-white font-medium hover:opacity-90 transition">确认点菜 ✅</button>
             </div>
+        </div>
+    </div>
+
+    <!-- 管理页 -->
+    <div id="page-manage" class="page p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-sm p-4 mb-4">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-bold text-gray-800">⚙️ 菜品管理</h2>
+                <button onclick="showAddDishModal()" class="px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm hover:bg-green-200 transition">➕ 增加菜品</button>
+            </div>
+            <div id="manage-dishes-list" class="space-y-2"></div>
         </div>
     </div>
 
@@ -105,17 +97,24 @@
     <div id="page-shopping" class="page p-4 hidden">
         <div class="bg-white rounded-2xl shadow-sm p-4">
             <h2 class="text-lg font-bold text-gray-800 mb-3">🛒 购物清单</h2>
-            <div id="shopping-list" class="space-y-2">
-                <p class="text-gray-400 text-center py-8">还没有点菜，无法生成清单</p>
+            <div id="shopping-list" class="space-y-2"><p class="text-gray-400 text-center py-8">还没有点菜，无法生成清单</p></div>
+            <button onclick="copyShoppingList()" class="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-green-400 to-teal-400 text-white font-medium hover:opacity-90 transition">📋 复制清单</button>
+        </div>
+    </div>
+
+    <!-- 模态框 -->
+    <div id="modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-md modal">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 id="modal-title" class="text-lg font-bold text-gray-800">增加菜品</h3>
+                <button onclick="closeModal()" class="text-gray-400 text-2xl">&times;</button>
             </div>
-            <button onclick="copyShoppingList()" class="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-green-400 to-teal-400 text-white font-medium hover:opacity-90 transition">
-                📋 复制清单
-            </button>
+            <div class="p-4 space-y-3" id="modal-content"></div>
         </div>
     </div>
 
     <script>
-        // 预置菜品数据
+        // 预置菜品
         const defaultDishes = [
             { id: 1, name: '番茄炒蛋', emoji: '🍅', category: 'quick', time: '10分钟', ingredients: ['番茄2个', '鸡蛋3个', '葱花'] },
             { id: 2, name: '红烧肉', emoji: '🥩', category: 'weekend', time: '60分钟', ingredients: ['五花肉500g', '冰糖', '生抽', '老抽'] },
@@ -139,39 +138,34 @@
             { id: 20, name: '水煮虾', emoji: '🦐', category: 'quick', time: '10分钟', ingredients: ['基围虾', '姜片', '料酒'] }
         ];
 
-        // 状态管理
         let dishes = JSON.parse(localStorage.getItem('dishes')) || defaultDishes;
         let todayMenu = JSON.parse(localStorage.getItem('todayMenu')) || [];
         let selectedDishes = new Set();
         let currentCategory = 'all';
+        let nextId = Math.max(...dishes.map(d => d.id), 0) + 1;
 
-        // 初始化
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('menu-date').textContent = new Date().toLocaleDateString('zh-CN');
             renderDishes();
             renderTodayMenu();
             renderHistory();
             renderShoppingList();
+            renderManageList();
         });
 
-        // 页面切换
         function showPage(page) {
             document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
             document.getElementById(`page-${page}`).classList.remove('hidden');
             if (page === 'menu') renderTodayMenu();
             if (page === 'shopping') renderShoppingList();
+            if (page === 'manage') renderManageList();
         }
 
-        // 渲染菜品
         function renderDishes() {
             const grid = document.getElementById('dishes-grid');
-            const filtered = currentCategory === 'all' 
-                ? dishes 
-                : dishes.filter(d => d.category === currentCategory);
-            
+            const filtered = currentCategory === 'all' ? dishes : dishes.filter(d => d.category === currentCategory);
             grid.innerHTML = filtered.map(dish => `
-                <div class="dish-card border-2 border-gray-100 rounded-xl p-3 cursor-pointer ${selectedDishes.has(dish.id) ? 'selected' : 'bg-white'}" 
-                     onclick="toggleDish(${dish.id})">
+                <div class="dish-card border-2 border-gray-100 rounded-xl p-3 cursor-pointer ${selectedDishes.has(dish.id) ? 'selected' : 'bg-white'}" onclick="toggleDish(${dish.id})">
                     <div class="text-3xl mb-2">${dish.emoji}</div>
                     <div class="font-bold text-gray-800 text-sm">${dish.name}</div>
                     <div class="text-xs text-gray-500 mt-1">⏱️ ${dish.time}</div>
@@ -180,22 +174,16 @@
             `).join('');
         }
 
-        // 切换选中
         function toggleDish(id) {
-            if (selectedDishes.has(id)) {
-                selectedDishes.delete(id);
-            } else {
-                selectedDishes.add(id);
-            }
+            if (selectedDishes.has(id)) selectedDishes.delete(id);
+            else selectedDishes.add(id);
             renderDishes();
             updateSelectedPreview();
         }
 
-        // 更新已选预览
         function updateSelectedPreview() {
             const preview = document.getElementById('selected-preview');
             const count = document.getElementById('selected-count');
-            
             if (selectedDishes.size > 0) {
                 preview.classList.remove('hidden');
                 count.textContent = selectedDishes.size;
@@ -204,38 +192,24 @@
             }
         }
 
-        // 确认点菜
         function confirmSelection() {
             const selected = dishes.filter(d => selectedDishes.has(d.id));
             todayMenu = [...todayMenu, ...selected];
-            
-            // 保存到历史
             const history = JSON.parse(localStorage.getItem('history')) || [];
-            history.unshift({
-                date: new Date().toISOString().split('T')[0],
-                dishes: selected.map(d => d.name)
-            });
+            history.unshift({ date: new Date().toISOString().split('T')[0], dishes: selected.map(d => d.name) });
             localStorage.setItem('history', JSON.stringify(history.slice(0, 7)));
-            
-            // 保存今日菜单
             localStorage.setItem('todayMenu', JSON.stringify(todayMenu));
-            
-            // 清空选择
             selectedDishes.clear();
             updateSelectedPreview();
-            
-            // 跳转菜单页
             showPage('menu');
         }
 
-        // 渲染今日菜单
         function renderTodayMenu() {
             const container = document.getElementById('today-menu');
             if (todayMenu.length === 0) {
                 container.innerHTML = '<p class="text-gray-400 text-center py-8">还没有点菜，去点菜吧 👇</p>';
                 return;
             }
-            
             container.innerHTML = todayMenu.map((dish, index) => `
                 <div class="flex items-center justify-between bg-gray-50 rounded-xl p-3 fade-in">
                     <div class="flex items-center gap-3">
@@ -250,7 +224,6 @@
             `).join('');
         }
 
-        // 移除菜品
         function removeDish(index) {
             todayMenu.splice(index, 1);
             localStorage.setItem('todayMenu', JSON.stringify(todayMenu));
@@ -258,7 +231,6 @@
             renderShoppingList();
         }
 
-        // 清空菜单
         function clearMenu() {
             if (todayMenu.length === 0) return;
             if (confirm('确定清空今日菜单吗？')) {
@@ -269,16 +241,13 @@
             }
         }
 
-        // 渲染历史
         function renderHistory() {
             const history = JSON.parse(localStorage.getItem('history')) || [];
             const container = document.getElementById('history-list');
-            
             if (history.length === 0) {
                 container.innerHTML = '<p>暂无记录</p>';
                 return;
             }
-            
             container.innerHTML = history.map(h => `
                 <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                     <span class="text-gray-400">${h.date}</span>
@@ -287,38 +256,29 @@
             `).join('');
         }
 
-        // 渲染购物清单
         function renderShoppingList() {
             const container = document.getElementById('shopping-list');
             if (todayMenu.length === 0) {
                 container.innerHTML = '<p class="text-gray-400 text-center py-8">还没有点菜，无法生成清单</p>';
                 return;
             }
-            
-            // 合并所有食材
             const allIngredients = todayMenu.flatMap(d => d.ingredients);
             const uniqueIngredients = [...new Set(allIngredients)];
-            
             container.innerHTML = uniqueIngredients.map((item, index) => `
                 <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                    <input type="checkbox" id="item-${index}" class="w-5 h-5 rounded border-gray-300 text-red-500 focus:ring-red-500">
+                    <input type="checkbox" id="item-${index}" class="w-5 h-5 rounded border-gray-300 text-red-500">
                     <label for="item-${index}" class="flex-1 text-gray-800">${item}</label>
                 </div>
             `).join('');
         }
 
-        // 复制清单
         function copyShoppingList() {
             if (todayMenu.length === 0) return;
             const allIngredients = todayMenu.flatMap(d => d.ingredients);
             const text = `今日菜单：${todayMenu.map(d => d.name).join('、')}\n\n购物清单：\n${allIngredients.join('\n')}`;
-            
-            navigator.clipboard.writeText(text).then(() => {
-                alert('清单已复制到剪贴板！');
-            });
+            navigator.clipboard.writeText(text).then(() => alert('清单已复制！'));
         }
 
-        // 分类筛选
         function filterCategory(cat) {
             currentCategory = cat;
             document.querySelectorAll('.category-btn').forEach(btn => {
@@ -333,23 +293,149 @@
             renderDishes();
         }
 
-        // 随机推荐
         function randomPick() {
-            const filtered = currentCategory === 'all' 
-                ? dishes 
-                : dishes.filter(d => d.category === currentCategory);
+            const filtered = currentCategory === 'all' ? dishes : dishes.filter(d => d.category === currentCategory);
             const random = filtered[Math.floor(Math.random() * filtered.length)];
-            
             if (!selectedDishes.has(random.id)) {
                 selectedDishes.add(random.id);
                 renderDishes();
                 updateSelectedPreview();
             }
-            
             alert(`🎲 随机推荐：${random.emoji} ${random.name}`);
         }
 
-        // PWA 支持
+        // ===== 新增：管理功能 =====
+        function renderManageList() {
+            const container = document.getElementById('manage-dishes-list');
+            container.innerHTML = dishes.map(dish => `
+                <div class="flex items-center justify-between bg-gray-50 rounded-xl p-3">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">${dish.emoji}</span>
+                        <div>
+                            <div class="font-medium text-gray-800">${dish.name}</div>
+                            <div class="text-xs text-gray-500">${dish.category} · ${dish.time}</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="editDish(${dish.id})" class="px-3 py-1 rounded-full bg-blue-100 text-blue-600 text-sm">编辑</button>
+                        <button onclick="deleteDish(${dish.id})" class="px-3 py-1 rounded-full bg-red-100 text-red-600 text-sm">删除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showModal(title, content) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-content').innerHTML = content;
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+        }
+
+        function showAddDishModal() {
+            showModal('➕ 增加菜品', `
+                <input type="hidden" id="edit-id" value="">
+                <input type="text" id="input-name" placeholder="菜品名称" class="w-full px-3 py-2 border rounded-xl">
+                <input type="text" id="input-emoji" placeholder="Emoji 如: 🍜" class="w-full px-3 py-2 border rounded-xl">
+                <select id="input-category" class="w-full px-3 py-2 border rounded-xl">
+                    <option value="quick">⚡ 快手菜</option>
+                    <option value="weekend">🍲 周末菜</option>
+                    <option value="soup">🥣 汤羹</option>
+                    <option value="staple">🍚 主食</option>
+                </select>
+                <input type="text" id="input-time" placeholder="烹饪时间 如: 15分钟" class="w-full px-3 py-2 border rounded-xl">
+                <textarea id="input-ingredients" placeholder="食材，用逗号分隔 如: 猪肉,青椒,蒜" class="w-full px-3 py-2 border rounded-xl" rows="3"></textarea>
+                <button onclick="saveDish()" class="w-full py-2 rounded-xl bg-gradient-to-r from-green-400 to-teal-400 text-white font-medium">保存</button>
+            `);
+        }
+
+        function editDish(id) {
+            const dish = dishes.find(d => d.id === id);
+            showModal('✏️ 编辑菜品', `
+                <input type="hidden" id="edit-id" value="${id}">
+                <input type="text" id="input-name" value="${dish.name}" placeholder="菜品名称" class="w-full px-3 py-2 border rounded-xl">
+                <input type="text" id="input-emoji" value="${dish.emoji}" placeholder="Emoji" class="w-full px-3 py-2 border rounded-xl">
+                <select id="input-category" class="w-full px-3 py-2 border rounded-xl">
+                    <option value="quick" ${dish.category === 'quick' ? 'selected' : ''}>⚡ 快手菜</option>
+                    <option value="weekend" ${dish.category === 'weekend' ? 'selected' : ''}>🍲 周末菜</option>
+                    <option value="soup" ${dish.category === 'soup' ? 'selected' : ''}>🥣 汤羹</option>
+                    <option value="staple" ${dish.category === 'staple' ? 'selected' : ''}>🍚 主食</option>
+                </select>
+                <input type="text" id="input-time" value="${dish.time}" placeholder="烹饪时间" class="w-full px-3 py-2 border rounded-xl">
+                <textarea id="input-ingredients" placeholder="食材" class="w-full px-3 py-2 border rounded-xl" rows="3">${dish.ingredients.join(',')}</textarea>
+                <button onclick="saveDish()" class="w-full py-2 rounded-xl bg-gradient-to-r from-blue-400 to-indigo-400 text-white font-medium">保存修改</button>
+            `);
+        }
+
+        function saveDish() {
+            const id = document.getElementById('edit-id').value;
+            const name = document.getElementById('input-name').value.trim();
+            const emoji = document.getElementById('input-emoji').value.trim() || '🍽️';
+            const category = document.getElementById('input-category').value;
+            const time = document.getElementById('input-time').value.trim() || '15分钟';
+            const ingredients = document.getElementById('input-ingredients').value.split(/[,，]/).map(s => s.trim()).filter(s => s);
+
+            if (!name) { alert('请输入菜品名称'); return; }
+
+            if (id) {
+                const index = dishes.findIndex(d => d.id === parseInt(id));
+                dishes[index] = { ...dishes[index], name, emoji, category, time, ingredients };
+            } else {
+                dishes.push({ id: nextId++, name, emoji, category, time, ingredients });
+            }
+
+            localStorage.setItem('dishes', JSON.stringify(dishes));
+            closeModal();
+            renderDishes();
+            renderManageList();
+        }
+
+        function deleteDish(id) {
+            if (!confirm('确定删除这道菜吗？')) return;
+            dishes = dishes.filter(d => d.id !== id);
+            localStorage.setItem('dishes', JSON.stringify(dishes));
+            renderDishes();
+            renderManageList();
+        }
+
+        // ===== 新增：自选菜功能 =====
+        function showCustomDishModal() {
+            showModal('✏️ 自选菜（临时）', `
+                <input type="text" id="custom-name" placeholder="菜名 如: 老婆爱吃的红烧肉" class="w-full px-3 py-2 border rounded-xl">
+                <input type="text" id="custom-emoji" placeholder="Emoji 如: ❤️" class="w-full px-3 py-2 border rounded-xl">
+                <input type="text" id="custom-time" placeholder="时间 如: 30分钟" class="w-full px-3 py-2 border rounded-xl">
+                <textarea id="custom-ingredients" placeholder="食材（可选）" class="w-full px-3 py-2 border rounded-xl" rows="2"></textarea>
+                <p class="text-xs text-gray-500">💡 自选菜只加入今日菜单，不会保存到菜品库</p>
+                <button onclick="addCustomDish()" class="w-full py-2 rounded-xl bg-gradient-to-r from-blue-400 to-indigo-400 text-white font-medium">加入今日菜单</button>
+            `);
+        }
+
+        function addCustomDish() {
+            const name = document.getElementById('custom-name').value.trim();
+            const emoji = document.getElementById('custom-emoji').value.trim() || '🍽️';
+            const time = document.getElementById('custom-time').value.trim() || '15分钟';
+            const ingredients = document.getElementById('custom-ingredients').value.split(/[,，]/).map(s => s.trim()).filter(s => s);
+
+            if (!name) { alert('请输入菜名'); return; }
+
+            // 直接加入今日菜单，不保存到菜品库
+            todayMenu.push({
+                id: 'custom-' + Date.now(),
+                name,
+                emoji,
+                category: 'custom',
+                time,
+                ingredients: ingredients.length > 0 ? ingredients : ['食材待定']
+            });
+
+            localStorage.setItem('todayMenu', JSON.stringify(todayMenu));
+            closeModal();
+            showPage('menu');
+        }
+
+        // PWA
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').catch(() => {});
         }
