@@ -7,6 +7,22 @@
     "directory": ".",
     "binding": "ASSETS"
   },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "FAMILY_MENU_SYNC",
+        "class_name": "MenuStateSync"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "MenuStateSync"
+      ]
+    }
+  ],
   "kv_namespaces": [
     {
       "binding": "FAMILY_MENU_STATE",

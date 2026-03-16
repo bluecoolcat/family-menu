@@ -12,7 +12,7 @@ python3 -m http.server 8080
 # 然后访问 http://localhost:8080
 ```
 
-### 方式二：部署到 Cloudflare Pages
+### 方式二：部署到 Cloudflare Workers
 
 #### 步骤 1：创建 Cloudflare 账户
 访问 https://dash.cloudflare.com/sign-up 注册（免费）
@@ -22,22 +22,23 @@ python3 -m http.server 8080
 2. 点击 "Create Token"
 3. 选择 "Custom token"
 4. 权限设置：
-   - Zone:Read, Zone:Edit
-   - Account:Read
-   - Cloudflare Pages:Edit
+  - Zone:Read, Zone:Edit
+  - Account:Read
+  - Workers Scripts:Edit
 5. 复制 Token
 
 #### 步骤 3：部署
 ```bash
 export CLOUDFLARE_API_TOKEN=你的token
-npx wrangler pages deploy . --project-name="family-menu"
+npx wrangler deploy
 ```
 
 #### 步骤 4：获取链接
 部署成功后会显示类似：
 ```
-✨ Successfully published your script to:
-https://family-menu.pages.dev
+Uploaded family-menu
+Published family-menu
+https://family-menu.<subdomain>.workers.dev
 ```
 
 ### 方式三：使用 npx 临时部署
@@ -49,7 +50,7 @@ npm install -g wrangler
 wrangler login
 
 # 部署
-wrangler pages deploy . --project-name="family-menu"
+wrangler deploy
 ```
 
 ## 使用方法
@@ -57,14 +58,14 @@ wrangler pages deploy . --project-name="family-menu"
 1. **老婆/老公打开链接** → 看到今日菜单
 2. **点击"点菜"** → 选择想吃的菜（可多选）
 3. **点击"确认点菜"** → 保存到今日菜单
-4. **另一方刷新页面** → 看到已点的菜，可继续补充
+4. **另一方几秒内自动同步** → 看到已点的菜，可继续补充
 5. **点击"购物清单"** → 自动生成食材清单
 
 ## 功能特点
 
 - ✅ 无数量限制点菜
 - ✅ 同一链接共享状态
-- ✅ 实时同步（刷新即可）
+- ✅ 双端自动同步（通常 5 秒内）
 - ✅ 随机推荐（"随便"按钮）
 - ✅ 分类筛选（快手/周末/汤/主食）
 - ✅ 购物清单一键复制
@@ -90,6 +91,20 @@ wrangler pages deploy . --project-name="family-menu"
 
 清除浏览器数据会丢失记录。
 
+## 同步机制
+
+共享点菜状态优先存储在 Cloudflare Durable Object 中。
+
+- Durable Object 提供单实例强一致读写，避免 Cloudflare KV 常见的 10 到 60 秒传播延迟
+- 前端每 5 秒轮询一次，并在页面重新激活时立即同步
+- 如果还没有配置 Durable Object，代码会临时回退到 KV，但同步速度仍可能偏慢
+
+旧版本升级后需要重新部署一次：
+
+```bash
+npx wrangler deploy
+```
+
 ## 自定义菜品
 
 编辑 `index.html` 中的 `defaultDishes` 数组即可添加/修改菜品：
@@ -111,7 +126,8 @@ wrangler pages deploy . --project-name="family-menu"
 - Vanilla JavaScript
 - LocalStorage 数据持久化
 - Service Worker 离线支持
-- Cloudflare Pages 部署
+- Cloudflare Workers API
+- Cloudflare Durable Object 强一致同步
 
 ## License
 

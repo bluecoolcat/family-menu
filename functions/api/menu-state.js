@@ -1,4 +1,5 @@
 const STATE_KEY = 'shared-menu-state';
+const DO_NAME = 'shared-menu-state';
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -14,7 +15,21 @@ function getBinding(env) {
   return env.FAMILY_MENU_STATE;
 }
 
+function getDurableObjectStub(env) {
+  if (!env.FAMILY_MENU_SYNC) {
+    return null;
+  }
+
+  const id = env.FAMILY_MENU_SYNC.idFromName(DO_NAME);
+  return env.FAMILY_MENU_SYNC.get(id);
+}
+
 export async function onRequestGet(context) {
+  const stub = getDurableObjectStub(context.env);
+  if (stub) {
+    return stub.fetch(context.request);
+  }
+
   const binding = getBinding(context.env);
   if (!binding) {
     return json({ error: 'Missing KV binding FAMILY_MENU_STATE' }, 500);
@@ -29,6 +44,11 @@ export async function onRequestGet(context) {
 }
 
 export async function onRequestPost(context) {
+  const stub = getDurableObjectStub(context.env);
+  if (stub) {
+    return stub.fetch(context.request);
+  }
+
   const binding = getBinding(context.env);
   if (!binding) {
     return json({ error: 'Missing KV binding FAMILY_MENU_STATE' }, 500);

@@ -16,13 +16,13 @@ if ! npx wrangler whoami &>/dev/null; then
 fi
 
 echo "📦 开始部署..."
-npx wrangler pages deploy . --project-name="family-menu" --branch="$BRANCH_NAME"
+npx wrangler deploy
 
 echo ""
 echo "✅ 部署完成！"
 echo ""
-echo "📱 访问地址：https://family-menu.pages.dev"
+echo "📱 访问地址：查看 wrangler deploy 输出中的 workers.dev 或自定义域名"
 echo ""
 echo "💡 提示："
-echo "   - 首次部署可能需要几分钟生效"
+echo "   - 首次切换到 Durable Object 同步时，会自动创建迁移"
 echo "   - 手机浏览器打开后，可添加到主屏幕像 App 一样使用"

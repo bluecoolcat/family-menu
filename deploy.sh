@@ -33,7 +33,7 @@ if [ -z "$BRANCH_NAME" ]; then
 fi
 
 # 部署
-echo "部署到 Cloudflare Pages..."
-wrangler pages deploy . --project-name="family-menu" --branch="$BRANCH_NAME"
+echo "部署到 Cloudflare Workers..."
+wrangler deploy
 
 echo "部署完成！"
