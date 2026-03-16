@@ -13,6 +13,8 @@ self.addEventListener('install', event => {
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache))
   );
+
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
@@ -23,6 +25,8 @@ self.addEventListener('activate', event => {
         .map(cacheName => caches.delete(cacheName))
     ))
   );
+
+  event.waitUntil(clients.claim());
 });
 
 self.addEventListener('fetch', event => {
