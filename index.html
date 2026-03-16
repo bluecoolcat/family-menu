@@ -320,7 +320,6 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('menu-date').textContent = new Date().toLocaleDateString('zh-CN');
-            stateUpdatedAt = Date.now();
             lastSharedStateHash = getStateHash();
             renderAll();
             const changed = await syncStateFromCloud();

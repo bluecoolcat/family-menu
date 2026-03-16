@@ -1,4 +1,4 @@
-const CACHE_NAME = 'family-menu-v3';
+const CACHE_NAME = 'family-menu-v4';
 const urlsToCache = [
   '/manifest.json',
   '/icon-192.svg',
@@ -8,6 +8,10 @@ const urlsToCache = [
 
 function isHtmlRequest(request) {
   return request.mode === 'navigate' || (request.headers.get('accept') || '').includes('text/html');
+}
+
+function isApiRequest(request) {
+  return new URL(request.url).pathname.startsWith('/api/');
 }
 
 self.addEventListener('install', event => {
@@ -33,6 +37,11 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') {
+    return;
+  }
+
+  if (isApiRequest(event.request)) {
+    event.respondWith(fetch(event.request));
     return;
   }
 
