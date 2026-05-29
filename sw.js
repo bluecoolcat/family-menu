@@ -1,5 +1,6 @@
-const CACHE_NAME = 'family-menu-v4';
+const CACHE_NAME = 'family-menu-v5';
 const urlsToCache = [
+  '/index.html',
   '/manifest.json',
   '/icon-192.svg',
   '/icon-512.svg',
@@ -47,13 +48,26 @@ self.addEventListener('fetch', event => {
 
   if (isHtmlRequest(event.request)) {
     event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
-          return response;
+      caches.match(event.request)
+        .then(cachedResponse => {
+          const networkFetch = fetch(event.request)
+            .then(response => {
+              if (!response || response.status !== 200) {
+                return response;
+              }
+
+              const responseClone = response.clone();
+              caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+              return response;
+            });
+
+          if (cachedResponse) {
+            event.waitUntil(networkFetch.catch(() => undefined));
+            return cachedResponse;
+          }
+
+          return networkFetch.catch(() => caches.match('/index.html'));
         })
-        .catch(() => caches.match(event.request).then(response => response || caches.match('/index.html')))
     );
     return;
   }

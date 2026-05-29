@@ -145,6 +145,7 @@
         };
         const SYNC_ENDPOINT = '/api/menu-state';
         const SYNC_POLL_INTERVAL_MS = 5000;
+        const SYNC_COOLDOWN_MS = 1500;
 
         let dishes = readJSON(STORAGE_KEYS.dishes, defaultDishes);
         let todayMenu = readJSON(STORAGE_KEYS.todayMenu, []);
@@ -155,7 +156,9 @@
         let nextId = Math.max(...dishes.map(d => d.id), 0) + 1;
         let syncInitialized = false;
         let syncInFlight = false;
+        let syncRequestInFlight = null;
         let lastSharedStateHash = '';
+        let lastSyncStartedAt = 0;
         let stateUpdatedAt = 0;
 
         function readJSON(key, fallback) {
@@ -306,13 +309,36 @@
             }
         }
 
-        async function syncAndRenderCurrentPage() {
-            const changed = await syncStateFromCloud();
-            if (changed) renderCurrentPage();
+        async function syncAndRenderCurrentPage(options = {}) {
+            const { force = false } = options;
+            const now = Date.now();
+
+            if (syncRequestInFlight) {
+                return syncRequestInFlight;
+            }
+
+            if (!force && now - lastSyncStartedAt < SYNC_COOLDOWN_MS) {
+                return false;
+            }
+
+            lastSyncStartedAt = now;
+            syncRequestInFlight = (async () => {
+                const changed = await syncStateFromCloud();
+                if (changed) renderCurrentPage();
+                return changed;
+            })();
+
+            try {
+                return await syncRequestInFlight;
+            } finally {
+                syncRequestInFlight = null;
+            }
         }
 
         function startSyncPolling() {
-            setInterval(syncAndRenderCurrentPage, SYNC_POLL_INTERVAL_MS);
+            setInterval(() => {
+                syncAndRenderCurrentPage({ force: true });
+            }, SYNC_POLL_INTERVAL_MS);
 
             document.addEventListener('visibilitychange', async () => {
                 if (document.hidden) return;
@@ -323,13 +349,15 @@
             window.addEventListener('pageshow', syncAndRenderCurrentPage);
         }
 
-        document.addEventListener('DOMContentLoaded', async () => {
+        document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('menu-date').textContent = new Date().toLocaleDateString('zh-CN');
             lastSharedStateHash = getStateHash();
             renderAll();
-            const changed = await syncStateFromCloud();
-            if (changed) renderCurrentPage();
             startSyncPolling();
+
+            requestAnimationFrame(() => {
+                syncAndRenderCurrentPage();
+            });
         });
 
         function showPage(page) {
